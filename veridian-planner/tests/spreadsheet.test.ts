@@ -240,12 +240,12 @@ describe('T18 delivery counting as at 15/12/2026', () => {
   const asAt = '2026-12-15';
   const mk = (date: string, opts: Partial<Parameters<typeof deliveryState>[0]> = {}) => {
     const b = { date, allocation: 'Client A', ...opts };
-    return { date, value: dayValue(b), state: deliveryState(b, asAt, 2) };
+    return { date, value: dayValue(b), state: deliveryState(b, asAt) };
   };
   const bookings: CountedBooking[] = [
     mk('2026-12-07', { deliveredConfirmed: true }),
     mk('2026-12-08', { deliveredConfirmed: true }),
-    mk('2026-12-09', { cancelledOn: '2026-12-01' }), // in time (window 2)
+    mk('2026-12-09', { cancelledOn: '2026-09-01' }), // 99 days notice: no charge
     mk('2026-12-10', {}), // past, unconfirmed
     mk('2026-12-21', {}), // future, planned
   ];
