@@ -1,6 +1,7 @@
 import { eomonth, minDate, startOfMonth, type ISODate } from './dates.js';
 import type { CountedBooking } from './bookings.js';
 import { countedValue, countsAgainstAllowance, countsAsBillable } from './bookings.js';
+import { pennies } from './money.js';
 
 // Client usage statement for one month (spec section 14; Client Statement sheet).
 
@@ -60,7 +61,7 @@ export function buildStatement(i: StatementInputs): Statement {
     .reduce((a, b) => a + countedValue(b), 0);
 
   const daysAtRiskOfExpiring = Math.max(0, remainingAtMonthEnd - bookedAheadInTerm);
-  const valueOfOneDay = i.allowanceDays === 0 ? 0 : i.annualFee / i.allowanceDays;
+  const valueOfOneDay = i.allowanceDays === 0 ? 0 : pennies(i.annualFee / i.allowanceDays);
 
   // The dated list shows the month's counted days plus any cancelled/moved
   // entries (statuses carry text); listing is capped by the caller's renderer.
@@ -79,7 +80,7 @@ export function buildStatement(i: StatementInputs): Statement {
     bookedAheadInTerm,
     daysAtRiskOfExpiring,
     valueOfOneDay,
-    valueOfDaysAtRisk: daysAtRiskOfExpiring * valueOfOneDay,
+    valueOfDaysAtRisk: pennies(daysAtRiskOfExpiring * valueOfOneDay),
     retainerFeeThisMonth: i.monthlyFee,
     rechargeableExpensesThisMonth: i.rechargeableExpensesThisMonth,
     datesThisMonth,

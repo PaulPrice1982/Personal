@@ -4,6 +4,8 @@
 // (A20), VAT treatment by entity registration, and foreign amounts at the
 // day's FX rate. Where they differ, the spec wins.
 
+import { pennies } from './money.js';
+
 export interface MileageRates {
   high: number;           // e.g. 0.45
   low: number;            // e.g. 0.25
@@ -20,7 +22,7 @@ export function mileageCost(
     Math.min(tripMiles, rates.thresholdMiles - milesAlreadyThisTaxYear),
   );
   const lowMiles = tripMiles - highMiles;
-  return highMiles * rates.high + lowMiles * rates.low;
+  return pennies(highMiles * rates.high + lowMiles * rates.low);
 }
 
 export interface ExpenseInput {
@@ -38,11 +40,11 @@ export function netCost(e: ExpenseInput, mileage: MileageRates): number {
     e.category === 'Mileage'
       ? mileageCost(e.miles ?? 0, e.milesAlreadyThisTaxYear ?? 0, mileage)
       : (e.amountExVat ?? 0) * (e.fxRate ?? 1);
-  return base;
+  return pennies(base);
 }
 
 export function rechargeAmount(net: number, rechargeable: boolean, markup: number): number {
-  return rechargeable ? net * (1 + markup) : 0;
+  return rechargeable ? pennies(net * (1 + markup)) : 0;
 }
 
 export function receiptMissing(e: ExpenseInput, net: number, receiptRequiredOver: number): boolean {

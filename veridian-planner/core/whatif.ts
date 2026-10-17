@@ -1,4 +1,11 @@
-import { annualCapacity, capacityStatus, type CapacityStatus } from './capacity.js';
+import {
+  annualCapacity,
+  capacityStatus,
+  summariseWeek,
+  type CapacityStatus,
+  type WeekInputs,
+  type WeekStatus,
+} from './capacity.js';
 import type { PlannerSettings, Rates } from './settings.js';
 import { pricePackage, workingWeeks, type Frequency } from './packages.js';
 
@@ -35,6 +42,23 @@ export interface ScenarioResult {
   revenueAdded: number;
   totalAnnualRevenue: number;
   verdict: string;
+}
+
+// A22: the week strip shows what each real week's status becomes once the
+// scenario's extra client days land on it (from the scenario clients'
+// frequencies and start dates, projected per week by the caller).
+export function weekStrip(
+  weeks: readonly WeekInputs[],
+  scenarioDaysByWeek: readonly number[],
+  veridianPerWeek: number,
+): WeekStatus[] {
+  return weeks.map(
+    (w, i) =>
+      summariseWeek(
+        { ...w, clientDays: w.clientDays + (scenarioDaysByWeek[i] ?? 0) },
+        veridianPerWeek,
+      ).status,
+  );
 }
 
 export function runScenario(i: ScenarioInputs, settings: PlannerSettings): ScenarioResult {

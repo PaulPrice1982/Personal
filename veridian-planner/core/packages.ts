@@ -1,4 +1,5 @@
 import type { Rates } from './settings.js';
+import { pennies } from './money.js';
 
 // Retainer packages (spec section 5; spreadsheet Lists + Retainer Calculator).
 // Units per year are derived from working weeks = 52 - leaveDays / 5.
@@ -67,6 +68,6 @@ export function pricePackage(freq: Frequency, rates: Rates, workingWks: number):
     unitType: ut,
     allowanceDays,
     annualFee,
-    monthlyFee: annualFee / 12,
+    monthlyFee: pennies(annualFee / 12),
   };
 }
