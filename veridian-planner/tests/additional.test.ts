@@ -8,11 +8,12 @@ import {
   convert,
   countsAgainstAllowance,
   countsAgainstCapacity,
+  cancellationChargeFraction,
+  countedValue,
   countsAsBillable,
   dayValue,
   defaultSettings,
   deliveryState,
-  isLateCancellation,
   mileageCost,
   netCost,
   overageCharge,
@@ -114,7 +115,7 @@ describe('A06 full day booked with 0.5 allowance left', () => {
 });
 
 describe('A07 shared client: Paul 8, Nick 5 of 12', () => {
-  it('1 day over, billed by the lead entity', () => {
+  it('1 day over, billed by Veridian Revenue Partners Limited', () => {
     const bookings: CountedBooking[] = [];
     for (let d = 1; d <= 8; d++)
       bookings.push({ date: `2027-01-${String(d).padStart(2, '0')}`, value: 1, state: 'delivered' });
@@ -123,7 +124,7 @@ describe('A07 shared client: Paul 8, Nick 5 of 12', () => {
     const usage = termUsage(bookings, '2027-01-01', '2027-12-31');
     const over = overageDays(usage.booked, 12);
     expect(over).toBe(1);
-    expect(overageCharge(over, S.rates)).toBe(1750); // lead entity's rates
+    expect(overageCharge(over, S.rates)).toBe(1750); // VRP Ltd rates
   });
 });
 
@@ -147,25 +148,38 @@ describe('A09 late notice: warning; renewal stands', () => {
   });
 });
 
-describe('A10 / A11 late cancellation window (2 working days)', () => {
-  it('cancel 1 working day before: late; counts against allowance; billable if over', () => {
-    expect(isLateCancellation('2026-12-09', '2026-12-08', 2)).toBe(true);
+describe('A10 / A11 cancellation charges (consultancy agreement schedule 1 s8.4)', () => {
+  // Confirmed 17/10/2026: these tiers supersede the spec's assumed binary
+  // 2-working-day window. Charge by written notice before the booked date.
+  it('under 14 days notice: 100% of the day; counts against allowance; billable if over', () => {
+    expect(cancellationChargeFraction('2026-12-09', '2026-12-08')).toBe(1);
     const state = deliveryState(
       { date: '2026-12-09', allocation: 'Client A', cancelledOn: '2026-12-08' },
       '2026-12-15',
-      2,
     );
     expect(state).toBe('cancelled_late');
     expect(countsAgainstAllowance(state)).toBe(true);
     expect(countsAsBillable(state)).toBe(true);
     expect(countsAgainstCapacity(state)).toBe(false); // the day itself is freed
   });
-  it('cancel 5 working days before: capacity freed; not counted', () => {
-    expect(isLateCancellation('2026-12-09', '2026-12-02', 2)).toBe(false);
+  it('14 to 44 days: 75%; 45 to 89 days: 50%', () => {
+    expect(cancellationChargeFraction('2026-12-09', '2026-11-25')).toBe(0.75); // 14 days
+    expect(cancellationChargeFraction('2026-12-09', '2026-11-01')).toBe(0.75); // 38 days
+    expect(cancellationChargeFraction('2026-12-09', '2026-10-25')).toBe(0.5);  // 45 days
+    expect(cancellationChargeFraction('2027-03-09', '2026-12-10')).toBe(0.5);  // 89 days
+    const partCharged: CountedBooking = {
+      date: '2026-12-09',
+      value: 1,
+      state: 'cancelled_late',
+      chargeFraction: 0.75,
+    };
+    expect(countedValue(partCharged)).toBe(0.75);
+  });
+  it('90 days or more: no charge; capacity freed; not counted', () => {
+    expect(cancellationChargeFraction('2027-03-09', '2026-12-09')).toBe(0); // 90 days
     const state = deliveryState(
-      { date: '2026-12-09', allocation: 'Client A', cancelledOn: '2026-12-02' },
+      { date: '2027-03-09', allocation: 'Client A', cancelledOn: '2026-12-09' },
       '2026-12-15',
-      2,
     );
     expect(state).toBe('cancelled_in_time');
     expect(countsAgainstAllowance(state)).toBe(false);
@@ -179,7 +193,6 @@ describe('A10 / A11 late cancellation window (2 working days)', () => {
         cancelledByConsultant: true,
       },
       '2026-12-15',
-      2,
     );
     expect(state).toBe('cancelled_by_consultant');
     expect(countsAgainstAllowance(state)).toBe(false);
@@ -192,14 +205,12 @@ describe('A12 day moved to a new date', () => {
     const oldState = deliveryState(
       { date: '2026-12-09', allocation: 'Client A', movedToBookingId: 'bk_new' },
       '2026-12-15',
-      2,
     );
     expect(oldState).toBe('moved');
     expect(countsAgainstAllowance(oldState)).toBe(false);
     const newState = deliveryState(
       { date: '2026-12-18', allocation: 'Client A' },
       '2026-12-15',
-      2,
     );
     expect(countsAgainstAllowance(newState)).toBe(true);
   });
