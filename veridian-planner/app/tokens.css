@@ -1,0 +1,34 @@
+/* Veridian Planner brand tokens (spec 20.3). Working values from previous
+   Veridian materials; check and replace with Brand Guidelines v1.0 hex codes
+   before build (open decision 6). Status colours are deliberately NOT brand
+   green, and never Detent's navy #0E1B2A or amber #F4A23B. */
+:root {
+  --pine: #1f3a2e;      /* primary: sidebar text/icons, primary buttons, headings */
+  --moss: #4f6b49;      /* secondary text accents, chart series 2 */
+  --fern: #5f7a5a;      /* supporting green, chart series 3 */
+  --sage: #a9bba4;      /* accent: active bar, rules, highlights, chart series 4 */
+  --paper: #f6f7f3;     /* app background */
+  --surface: #ffffff;   /* cards, tables, drawer */
+  --ink: #17211c;       /* body text; 4.5:1 on paper and surface */
+  --muted: #5b6660;     /* secondary text; must still meet 4.5:1 */
+  --hairline: #e3e7df;  /* borders and dividers */
+
+  /* Semantic status tokens: success is a blue-green distinct from pine. */
+  --success: #1f6f5c;
+  --warning: #b7791f;   /* a different hue from Detent's amber */
+  --danger: #b3261e;
+  --info: #475569;
+
+  /* Shape and depth: 4px grid; hairlines, not shadows. */
+  --radius: 8px;
+  --radius-sm: 6px;
+  --shadow-soft: 0 8px 24px rgba(23, 33, 28, 0.12); /* drawer, menus, dialogs only */
+
+  /* Typography: Manrope for interface (500/600/700/800), Bodoni Moda only for
+     the wordmark and large page titles. Self-hosted via Fontsource. */
+  --font-ui: 'Manrope', system-ui, sans-serif;
+  --font-display: 'Bodoni Moda', Georgia, serif;
+  --text-body: 14px;     /* line height 1.45 */
+  --text-label: 12px;
+  --text-title: 24px;
+}
