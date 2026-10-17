@@ -22,6 +22,21 @@ export function pencilledProbability(c: ForecastClient, defaultProbability: numb
   return defaultProbability;
 }
 
+// Review F-002: a monthly fee falls in the calendar month containing a
+// term-month anniversary of liveFrom, so a 12-month term yields exactly 12
+// fees even when it starts mid-month. Billing and statements must use the
+// same rule, so the forecast and the invoices agree.
+export function feeFallsInMonth(
+  c: Pick<ForecastClient, 'liveFrom' | 'liveTo'>,
+  monthStart: ISODate,
+): boolean {
+  const [ly, lm] = c.liveFrom.split('-').map(Number) as [number, number];
+  const [my, mm] = monthStart.split('-').map(Number) as [number, number];
+  const k = my * 12 + mm - (ly * 12 + lm);
+  if (k < 0) return false;
+  return c.liveTo === null || edate(c.liveFrom, k) <= c.liveTo;
+}
+
 export interface ForecastMonth {
   monthStart: ISODate;
   monthEnd: ISODate;
@@ -52,14 +67,12 @@ export function buildForecast(i: ForecastInputs): ForecastMonth[] {
   for (let m = 0; m < 12; m++) {
     const monthStart = edate(i.forecastStart, m);
     const monthEnd = addDays(edate(i.forecastStart, m + 1), -1);
-    const live = (c: ForecastClient) =>
-      c.liveFrom <= monthEnd && (c.liveTo === null || c.liveTo >= monthStart);
 
     let signed = 0;
     let pencilled = 0;
     let pencilledWeighted = 0;
     for (const c of i.clients) {
-      if (!live(c)) continue;
+      if (!feeFallsInMonth(c, monthStart)) continue;
       if (c.status === 'Signed') signed += c.monthlyFee;
       else {
         pencilled += c.monthlyFee;

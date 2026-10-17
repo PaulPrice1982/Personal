@@ -79,13 +79,59 @@ export function defaultSettings(asAt: ISODate): PlannerSettings {
 }
 
 // Reserved allocation names: a client may not take these (test T17).
-const RESERVED = new Set(['leave', 'detent', 'admin / bd', 'admin/bd', 'other']);
+// Review F-009: the check survives spacing, punctuation, invisible characters
+// and mixed-script look-alikes, and includes "Bank holiday".
+const RESERVED_KEYS = new Set(['leave', 'detent', 'adminbd', 'other', 'bankholiday']);
 
 export function validateClientName(name: string): { ok: boolean; reason?: string } {
-  const trimmed = name.trim();
-  if (!trimmed) return { ok: false, reason: 'Client name is required' };
-  if (RESERVED.has(trimmed.toLowerCase())) {
-    return { ok: false, reason: `"${trimmed}" is a reserved allocation name` };
+  const cleaned = name.normalize('NFKC').replace(/\p{Cf}/gu, '').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return { ok: false, reason: 'Client name is required' };
+  if (/\p{Script=Latin}/u.test(cleaned) && /[\p{Script=Cyrillic}\p{Script=Greek}]/u.test(cleaned)) {
+    return { ok: false, reason: 'Client name mixes alphabets. Retype it using one alphabet.' };
+  }
+  const key = cleaned.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  if (RESERVED_KEYS.has(key)) {
+    return { ok: false, reason: `"${cleaned}" is a reserved allocation name` };
   }
   return { ok: true };
+}
+
+// Review F-010: a mistyped or tampered setting must be rejected at save time,
+// never accepted silently. Returns one message per problem; empty means valid.
+export function validateSettings(s: PlannerSettings): string[] {
+  const messages: string[] = [];
+  const rates = [
+    ['Day rate', s.rates.dayRate],
+    ['Half day rate', s.rates.halfDayRate],
+    ['Additional day rate', s.rates.additionalDayRate],
+    ['Additional half day rate', s.rates.additionalHalfDayRate],
+  ] as const;
+  for (const [label, value] of rates) {
+    if (value < 0 || value > 100000) messages.push(`${label} must be between 0 and 100,000`);
+  }
+  const { veridianPerWeek, detentPerWeek, otherPerWeek, leaveDays } = s.capacity;
+  if (veridianPerWeek < 0 || detentPerWeek < 0 || otherPerWeek < 0) {
+    messages.push('Days per week cannot be negative');
+  }
+  if (veridianPerWeek + detentPerWeek + otherPerWeek > 5) {
+    messages.push('Days per week across the businesses cannot exceed 5');
+  }
+  if (leaveDays < 0 || leaveDays > 260) messages.push('Leave days must be between 0 and 260');
+  const { amber, red } = s.thresholds;
+  if (amber < 0 || amber > 1 || red < 0 || red > 1 || amber >= red) {
+    messages.push('Thresholds must be between 0 and 1, with amber below red');
+  }
+  let hasZeroTier = false;
+  for (const tier of s.cancellationTiers) {
+    if (tier.chargeFraction < 0 || tier.chargeFraction > 1) {
+      messages.push('A cancellation charge must be between 0% and 100%');
+    }
+    if (tier.minNoticeDays < 0) messages.push('Cancellation notice days cannot be negative');
+    if (tier.minNoticeDays === 0) hasZeroTier = true;
+  }
+  if (!hasZeroTier) messages.push('Cancellation tiers must include a tier from 0 days notice');
+  if (s.expenseMarkup < 0 || s.expenseMarkup > 1) {
+    messages.push('Expense markup must be between 0% and 100%');
+  }
+  return messages;
 }

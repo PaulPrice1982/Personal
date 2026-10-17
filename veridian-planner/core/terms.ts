@@ -1,7 +1,10 @@
-import { addDays, completeMonthsBetween, edate, formatUK, type ISODate } from './dates.js';
+import { addDays, edate, formatUK, type ISODate } from './dates.js';
 
 // Contract term maths (spec section 10; Retainer Calculator K..O, U).
 // Terms auto-renew for the same length; unused days expire at term end.
+// Review F-001: terms are counted by walking edate anniversaries rather than
+// DATEDIF months, so starts on the 29th to 31st (including 29/02) roll over
+// on the clamped renewal date instead of a day late.
 
 export interface TermPosition {
   termsCompleted: number;
@@ -17,13 +20,13 @@ export function termPosition(
   termMonths = 12,
   noticeDays = 90,
 ): TermPosition {
-  const termsCompleted =
-    asAt < contractStart
-      ? 0
-      : Math.floor(completeMonthsBetween(contractStart, asAt) / termMonths);
+  let termsCompleted = 0;
+  if (asAt >= contractStart) {
+    while (edate(contractStart, termMonths * (termsCompleted + 1)) <= asAt) termsCompleted++;
+  }
   const currentTermStart = edate(contractStart, termMonths * termsCompleted);
-  const currentTermEnd = addDays(edate(contractStart, termMonths * (termsCompleted + 1)), -1);
-  const renewalDate = addDays(currentTermEnd, 1);
+  const renewalDate = edate(contractStart, termMonths * (termsCompleted + 1));
+  const currentTermEnd = addDays(renewalDate, -1);
   return {
     termsCompleted,
     currentTermStart,

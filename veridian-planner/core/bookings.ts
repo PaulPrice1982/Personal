@@ -61,6 +61,14 @@ export function cancellationChargeFraction(
   cancelledOn: ISODate,
   tiers: readonly CancellationTier[] = DEFAULT_CANCELLATION_TIERS,
 ): number {
+  for (const tier of tiers) {
+    // F-010: a mistyped tier must fail loudly, not misprice silently.
+    if (tier.chargeFraction < 0 || tier.chargeFraction > 1 || tier.minNoticeDays < 0) {
+      throw new Error(
+        `Invalid cancellation tier: minNoticeDays ${tier.minNoticeDays}, chargeFraction ${tier.chargeFraction}`,
+      );
+    }
+  }
   const notice = Math.max(0, daysBetween(cancelledOn, bookingDate));
   const sorted = tiers.slice().sort((a, b) => b.minNoticeDays - a.minNoticeDays);
   for (const tier of sorted) {
@@ -108,10 +116,36 @@ export interface CountedBooking {
 
 // The share of a booking's value that counts on the allowance and billable
 // bases: full for worked/booked days, the cancellation tier's fraction for a
-// chargeable cancellation.
+// chargeable cancellation. Review F-006: a missing fraction on a chargeable
+// cancellation is an error, never a silent 100% charge.
 export function countedValue(b: CountedBooking): number {
-  if (b.state === 'cancelled_late') return b.value * (b.chargeFraction ?? 1);
+  if (b.state === 'cancelled_late') {
+    if (b.chargeFraction === undefined) {
+      throw new Error(`cancelled_late booking on ${b.date} has no chargeFraction`);
+    }
+    return b.value * b.chargeFraction;
+  }
   return b.value;
+}
+
+// One constructor so the charge fraction can never be forgotten (F-006). The
+// app builds CountedBooking from the stored delivery state and the fraction
+// recorded at cancellation time, never by recomputing past cancellations
+// against today's tiers.
+export function toCountedBooking(
+  b: BookingInput,
+  asAt: ISODate,
+  tiers: readonly CancellationTier[] = DEFAULT_CANCELLATION_TIERS,
+): CountedBooking {
+  const state = deliveryState(b, asAt, tiers);
+  return {
+    date: b.date,
+    value: dayValue(b),
+    state,
+    ...(state === 'cancelled_late'
+      ? { chargeFraction: cancellationChargeFraction(b.date, b.cancelledOn as ISODate, tiers) }
+      : {}),
+  };
 }
 
 export interface ClientTermUsage {
