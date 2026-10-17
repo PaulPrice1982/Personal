@@ -132,7 +132,10 @@ model SettingsHistory {
   leaveDays       Decimal @db.Decimal(5, 2)
   leaveYearStart  Int     @default(1) // month: 1 = January
   bankHolidayCountry String @default("GB") // gov.uk JSON for GB; Nager.Date for AU
-  lateCancellationWorkingDays Int @default(2)
+  // Cancellation charge tiers (consultancy agreement schedule 1 s8.4), JSON
+  // [{minNoticeDays, chargeFraction}]: under 14 days 100%, 14-44 75%,
+  // 45-89 50%, 90+ free.
+  cancellationTiersJson String @default("[{\"minNoticeDays\":90,\"chargeFraction\":0},{\"minNoticeDays\":45,\"chargeFraction\":0.5},{\"minNoticeDays\":14,\"chargeFraction\":0.75},{\"minNoticeDays\":0,\"chargeFraction\":1}]")
   amberThreshold  Decimal @db.Decimal(4, 3) @default(0.800)
   redThreshold    Decimal @db.Decimal(4, 3) @default(0.950)
   defaultWinProbability Decimal @db.Decimal(4, 3) @default(0.500)
@@ -167,7 +170,7 @@ model EntityShare {
   entity   Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
   userId   String
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isLead   Boolean @default(false) // the lead bills shared-client overage
+  isLead   Boolean @default(false) // shared-client overage is always billed by Veridian Revenue Partners Limited
 
   @@unique([entityId, userId])
 }
@@ -285,6 +288,9 @@ model Booking {
   deliveredConfirmedAt DateTime?
   cancelledById String?
   cancelledAt   DateTime?
+  // Charge fraction applied when a cancellation is chargeable, from the
+  // cancellation tiers in force when it was cancelled.
+  cancellationChargeFraction Decimal? @db.Decimal(4, 3)
   movedToBookingId String? @unique
   movedTo          Booking? @relation("BookingMove", fields: [movedToBookingId], references: [id])
   movedFrom        Booking? @relation("BookingMove")
