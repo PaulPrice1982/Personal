@@ -1,0 +1,15 @@
+{
+  "name": "veridian-planner-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Veridian Planner Phase 1: tested domain core (retainers, capacity, overage, forecast, statements, what-if, expenses) per Veridian_Planner_Build_Spec v2.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
+  }
+}
