@@ -5,7 +5,10 @@ export type ISODate = string;
 
 export function toSerial(d: ISODate): number {
   const [y, m, dd] = d.split('-').map(Number) as [number, number, number];
-  return Date.UTC(y, m - 1, dd) / 86400000;
+  const serial = Date.UTC(y, m - 1, dd) / 86400000;
+  // F-010: an impossible date (30/02) must be rejected, not rolled forward.
+  if (fromSerial(serial) !== d) throw new Error(`Invalid date ${d}`);
+  return serial;
 }
 
 export function fromSerial(n: number): ISODate {
@@ -112,4 +115,23 @@ export function maxDate(a: ISODate, b: ISODate): ISODate {
 export function formatUK(d: ISODate): string {
   const p = parts(d);
   return `${String(p.d).padStart(2, '0')}/${String(p.m).padStart(2, '0')}/${p.y}`;
+}
+
+// The user's calendar date in their own time zone (F-004). Every "today" or
+// asAt the app builds must come from here with the user's IANA zone, never
+// from new Date().toISOString().
+export function todayIn(timeZone: string, now: Date = new Date()): ISODate {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
+// The UK tax year containing d starts on 6 April (F-008, mileage threshold).
+export function ukTaxYearStart(d: ISODate): ISODate {
+  const p = parts(d);
+  const year = p.m > 4 || (p.m === 4 && p.d >= 6) ? p.y : p.y - 1;
+  return `${year}-04-06`;
 }
