@@ -17,9 +17,17 @@
 
   /* Semantic status tokens: success is a blue-green distinct from pine. */
   --success: #1f6f5c;
-  --warning: #b7791f;   /* a different hue from Detent's amber */
+  --warning: #b7791f;   /* fills only, with --ink text; never text on light grounds (F-016) */
   --danger: #b3261e;
   --info: #475569;
+
+  /* Review F-016: AA-safe companions. Warning text and badges use these two
+     (5.47:1 on paper, 5.91:1 on surface, 4.5:1+ on the badge fill). Form
+     control borders use --border-input (3.11:1 on surface); --hairline stays
+     for table dividers only. Never place --muted text on --secondary. */
+  --warning-text: #8a5a12;
+  --warning-bg: #fbf1df;
+  --border-input: #8a958c;
 
   /* Shape and depth: 4px grid; hairlines, not shadows. */
   --radius: 8px;
