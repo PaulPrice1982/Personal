@@ -17,8 +17,12 @@ tests differ, the tests win.
   (`prisma/schema.prisma` in this pack is the data model; extend, don't trim).
 - Tailwind CSS with `app/tokens.css` variables; shadcn/ui (sidebar, command,
   sheet, dialog, table, toast); cmdk palette; FullCalendar themed to tokens;
-  Recharts; Lucide icons at 1.5px stroke. Self-host Manrope + Bodoni Moda
-  (Fontsource), do not load from Google.
+  Recharts; Lucide icons at 1.5px stroke. Confirmed decision: the app uses the
+  same design, branding and colours as the veridian-partners.com website
+  (deep pine / pine / sage / ivory / paper palette in `app/tokens.css`; GFS
+  Didot for the wordmark and large titles, Georgia for reading text, Figtree
+  for interface text). Self-host the fonts (Fontsource), do not load from
+  Google at runtime.
 - Auth built per section "Login security" below (own implementation or Auth.js
   extended); Argon2id for passwords; Cloudflare Turnstile or similar.
 - Email: Postmark or Resend, sending from mail.veridian-partners.com once SPF,
@@ -94,8 +98,8 @@ delivered days, capture an expense, check capacity.
 3. **Clients**: list + detail. Package, term dates, notice status, allowance
    usage bar, bookings, expenses, statements, contracts. Client create
    rejects reserved names (Leave, Detent, Admin / BD, Other). A client
-   belongs to one entity; shared clients name a lead partner who bills
-   overage.
+   belongs to one entity; shared clients are always billed by Veridian
+   Revenue Partners Limited (confirmed decision), whoever delivers the days.
 4. **Forecast**: the 12-month table plus a stacked bar chart (signed,
    pencilled weighted, overage, expenses) with the utilisation line (amber
    80%, red 95%). Team view (admin only) converts to GBP.
@@ -154,17 +158,19 @@ veridian-partners.com/login: a page styled like the site that links through to
 app.veridian-partners.com (redirect is fine). Footer gains one "Consultant
 login" link. Nothing else changes on the site.
 
-## Open decisions (built at the spec's stated defaults; Paul can change later)
+## Decisions (confirmed by Paul, 17/10/2026)
 
-1. Over-allowance half day **£1,050** (not £875).
-2. Late cancellation window **2 working days** (and should go in contract
-   templates — flagged, not done).
+1. Over-allowance half day **£1,050**.
+2. Late cancellation window **2 working days**. Paul's current SOW template
+   carries no cancellation clause, so the app's setting is the source of
+   truth; contract templates should gain a matching clause when uploaded.
 3. Partner free/busy visibility **on** by default.
-4. Shared-client settlement is Phase 2; the lead entity bills.
+4. Shared clients are **always billed by Veridian Revenue Partners Limited**;
+   partner settlement stays Phase 2.
 5. Meeting blocking hours **09:00–17:30**.
-6. Brand hexes are working values; replace with Brand Guidelines v1.0 values
-   and the supplied logo files (lockup + Sealed V) when provided.
-7. Website hosting decides /login redirect vs rewrite; default **redirect**.
+6. The app uses the **existing website's design, branding and colours**
+   (`app/tokens.css`; GFS Didot / Georgia / Figtree).
+7. Website /login **redirects** to app.veridian-partners.com.
 8. Trusted browsers **30 days**.
 
 ## Phase 2: do NOT build (keep the data model ready)
