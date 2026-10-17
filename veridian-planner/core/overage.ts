@@ -1,7 +1,7 @@
 import type { Rates } from './settings.js';
 import { minDate, type ISODate } from './dates.js';
 import type { CountedBooking } from './bookings.js';
-import { countsAgainstAllowance } from './bookings.js';
+import { countedValue, countsAgainstAllowance } from './bookings.js';
 
 // Overage (spec sections 6-7; Retainer Calculator R/S, Overage by Month).
 // Charge for D over-allowance days: whole days at the additional day rate,
@@ -59,7 +59,7 @@ export function monthlyOverage(
     const upTo = termEnd === null ? monthEnd : minDate(monthEnd, termEnd);
     const booked = counted
       .filter((b) => b.date <= upTo)
-      .reduce((acc, b) => acc + b.value, 0);
+      .reduce((acc, b) => acc + countedValue(b), 0);
     const over = Math.max(0, booked - allowanceDays);
     const charge = overageCharge(over, rates);
     const row = {

@@ -1,6 +1,6 @@
 import { eomonth, minDate, startOfMonth, type ISODate } from './dates.js';
 import type { CountedBooking } from './bookings.js';
-import { countsAgainstAllowance, countsAsBillable } from './bookings.js';
+import { countedValue, countsAgainstAllowance, countsAsBillable } from './bookings.js';
 
 // Client usage statement for one month (spec section 14; Client Statement sheet).
 
@@ -38,10 +38,10 @@ export function buildStatement(i: StatementInputs): Statement {
   const counted = i.bookings.filter((b) => countsAgainstAllowance(b.state));
   const inMonth = (b: CountedBooking) => b.date >= monthStart && b.date <= monthEnd;
 
-  const daysThisMonth = counted.filter(inMonth).reduce((a, b) => a + b.value, 0);
+  const daysThisMonth = counted.filter(inMonth).reduce((a, b) => a + countedValue(b), 0);
   const deliveredThisMonth = i.bookings
     .filter((b) => countsAsBillable(b.state) && inMonth(b))
-    .reduce((a, b) => a + b.value, 0);
+    .reduce((a, b) => a + countedValue(b), 0);
 
   const usedUpper = i.currentTermEnd ? minDate(monthEnd, i.currentTermEnd) : monthEnd;
   const usedThisTermToMonthEnd = counted
@@ -49,7 +49,7 @@ export function buildStatement(i: StatementInputs): Statement {
       (b) =>
         (i.currentTermStart === null || b.date >= i.currentTermStart) && b.date <= usedUpper,
     )
-    .reduce((a, b) => a + b.value, 0);
+    .reduce((a, b) => a + countedValue(b), 0);
 
   const remainingAtMonthEnd = Math.max(0, i.allowanceDays - usedThisTermToMonthEnd);
 
@@ -57,7 +57,7 @@ export function buildStatement(i: StatementInputs): Statement {
     .filter(
       (b) => b.date > monthEnd && (i.currentTermEnd === null || b.date <= i.currentTermEnd),
     )
-    .reduce((a, b) => a + b.value, 0);
+    .reduce((a, b) => a + countedValue(b), 0);
 
   const daysAtRiskOfExpiring = Math.max(0, remainingAtMonthEnd - bookedAheadInTerm);
   const valueOfOneDay = i.allowanceDays === 0 ? 0 : i.annualFee / i.allowanceDays;
