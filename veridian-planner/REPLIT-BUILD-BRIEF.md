@@ -5,7 +5,7 @@ A new Replit app, separate from the veridian-partners.com website, to run at
 page and a footer "Consultant login" link; nothing else on the site changes.
 
 This brief condenses Veridian_Planner_Build_Spec v2.0 (17/10/2026). The
-numerical rules are already implemented and tested in `core/` (61 vitest tests
+numerical rules are already implemented and tested in `core/` (112 vitest tests
 mirroring the spreadsheet's 27 scenarios and the spec's additional tests, all
 passing). **Copy `core/` in unchanged and build the app around it.** Where the
 app and the old spreadsheet differ, the spec wins; where this brief and `core/`
@@ -62,9 +62,16 @@ tests differ, the tests win.
   date is agreed (the app's Move action records the replacement, so only the
   new date counts). Days the consultant cannot deliver are rescheduled or
   not charged.
-- `overage.ts` overage walked in date order; whole days at the additional day
-  rate, a trailing half at the additional half-day rate; monthly overage =
-  delta of cumulative charges.
+- `overage.ts` overage priced booking by booking, walked in date order
+  (review F-003, superseding the earlier delta-of-cumulative rule): a full
+  day at the additional day rate, a half day or the over-allowance half of a
+  straddling day at the additional half-day rate, any other fraction at that
+  fraction of the additional day rate, and a chargeable cancellation at its
+  tier percentage of that day's over-allowance price. Two bases (F-005):
+  'allowance' for Forecast and Home, 'billable' (delivered plus chargeable
+  cancellations only) for Billing and statement overage lines, so the Xero
+  export never bills undelivered days. Each overage line is one dated
+  booking at a stated rate.
 - `alerts.ts` client alert priority: Over allowance → Confirm past days →
   Nearly used (≤10% left) → Unused days at risk → Notice deadline soon → OK.
 - `forecast.ts` 12-month forecast (signed in full for live months; pencilled
@@ -74,8 +81,22 @@ tests differ, the tests win.
 - `expenses.ts` mileage 45p/25p with the 10,000-mile tax-year threshold,
   recharge = net × (1 + markup), receipts required over £25.
 
-Run `npm test` in the pack to see all 61 checks pass before building; keep the
-suite green in CI for every change.
+Run `npm test` in the pack to see all 112 checks pass before building (the
+original 61 plus the review-driven edge suites: terms.edge, overage.walk,
+review.edge and the A35 contrast test); keep the suite green in CI for every
+change. The security, correctness and UX review of 17/10/2026 has been
+applied to this pack: F-001 (term anniversaries), F-002 (fees by term-month
+anniversary, which Billing and Statements must also use), F-003/F-005
+(overage above), F-006 (charge fractions never default; build CountedBooking
+with toCountedBooking from the stored state and fraction), F-004/F-008
+helpers (todayIn, ukTaxYearStart), F-009 (reserved names incl. Bank
+holiday), F-010 (penny rounding, monthlyFeeSchedule, validateSettings, date
+and tier validation), F-015 (vitest 4, lockfile), F-016 (AA-safe
+warning/border tokens) and the schema items F-007/F-011/F-012/F-013/F-014
+(patched schema plus the three SQL migrations in prisma/migrations/). The
+app-layer obligations from those findings are in `APP-REVIEW-OBLIGATIONS.md`
+beside this file and bind this build; the full review is `REVIEW_SPEC.md` in
+the source repository.
 
 ## Pages (left sidebar, top to bottom)
 
@@ -105,9 +126,10 @@ delivered days, capture an expense, check capacity.
    meetings get clash markers and count busy once). WCAG 2.2 AA.
 3. **Clients**: list + detail. Package, term dates, notice status, allowance
    usage bar, bookings, expenses, statements, contracts. Client create
-   rejects reserved names (Leave, Detent, Admin / BD, Other). A client
-   belongs to one entity; shared clients are always billed by Veridian
-   Revenue Partners Limited (confirmed decision), whoever delivers the days.
+   rejects reserved names (Leave, Detent, Admin / BD, Other, Bank holiday).
+   A client belongs to one entity; shared clients are always billed by
+   Veridian Revenue Partners Limited (confirmed decision), whoever delivers
+   the days.
 4. **Forecast**: the 12-month table plus a stacked bar chart (signed,
    pencilled weighted, overage, expenses) with the utilisation line (amber
    80%, red 95%). Team view (admin only) converts to GBP.
@@ -182,13 +204,23 @@ login" link. Nothing else changes on the site.
    (`app/tokens.css`; GFS Didot / Georgia / Figtree).
 7. Website /login **redirects** to app.veridian-partners.com.
 8. Trusted browsers **30 days**.
+9. Review Q1 (confirmed 17/10/2026): overage is priced booking by booking;
+   each over-allowance half day bills at **£1,050**, and a chargeable
+   cancellation over allowance bills at its tier percentage of that day's
+   over-allowance price.
+10. Review Q2 (confirmed 17/10/2026): **bank holidays are unavailable
+    days**. Nothing can be booked on a bank holiday for the user's country
+    (no client days, leave or other allocations); the calendar shows them
+    as blocked with the holiday's name, they carry no capacity, and "Bank
+    holiday" stays a reserved client name. Review Q3 (fee attribution)
+    remains on the term-month anniversary default until Paul rules.
 
 ## Phase 2: do NOT build (keep the data model ready)
 
 Xero API connection, e-signature, Microsoft Graph/Azure write access,
 partner settlement, passkeys, client portal.
 
-## Acceptance (beyond the 61 core tests)
+## Acceptance (beyond the 112 engine tests)
 
 A13 delivered-day edit after statement → allowed, flagged, logged, version 2
 offered. A14–A17 ICS: clash markers, busy counted once; 2h busy → half day,
