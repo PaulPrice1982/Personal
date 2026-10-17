@@ -1,17 +1,19 @@
-/* Veridian Planner brand tokens (spec 20.3). Working values from previous
-   Veridian materials; check and replace with Brand Guidelines v1.0 hex codes
-   before build (open decision 6). Status colours are deliberately NOT brand
-   green, and never Detent's navy #0E1B2A or amber #F4A23B. */
+/* Veridian Planner brand tokens. Decision (17/10/2026): the app uses the same
+   design, branding and colours as the veridian-partners.com website, not the
+   spec's working values. Status colours are deliberately NOT brand green, and
+   never Detent's navy #0E1B2A or amber #F4A23B. */
 :root {
-  --pine: #1f3a2e;      /* primary: sidebar text/icons, primary buttons, headings */
-  --moss: #4f6b49;      /* secondary text accents, chart series 2 */
-  --fern: #5f7a5a;      /* supporting green, chart series 3 */
-  --sage: #a9bba4;      /* accent: active bar, rules, highlights, chart series 4 */
-  --paper: #f6f7f3;     /* app background */
-  --surface: #ffffff;   /* cards, tables, drawer */
+  --deep-pine: #16261d; /* darkest ground: sidebar, wordmark on light */
+  --pine: #1f3529;      /* primary: sidebar text/icons, primary buttons, headings */
+  --sage: #93a87b;      /* accent: active bar, rules, highlights, chart series 2 */
+  --sage-light: #a9bc97;/* hover tints, chart series 3 */
+  --secondary: #c9d3c0; /* soft fills, chart series 4 */
+  --ivory: #f4f2ec;     /* alternate light ground (cards on paper) */
+  --paper: #f5f7f0;     /* app background */
+  --surface: #ffffff;   /* tables, drawer, inputs */
   --ink: #17211c;       /* body text; 4.5:1 on paper and surface */
   --muted: #5b6660;     /* secondary text; must still meet 4.5:1 */
-  --hairline: #e3e7df;  /* borders and dividers */
+  --hairline: #e0e5da;  /* borders and dividers */
 
   /* Semantic status tokens: success is a blue-green distinct from pine. */
   --success: #1f6f5c;
@@ -22,12 +24,14 @@
   /* Shape and depth: 4px grid; hairlines, not shadows. */
   --radius: 8px;
   --radius-sm: 6px;
-  --shadow-soft: 0 8px 24px rgba(23, 33, 28, 0.12); /* drawer, menus, dialogs only */
+  --shadow-soft: 0 8px 24px rgba(22, 38, 29, 0.12); /* drawer, menus, dialogs only */
 
-  /* Typography: Manrope for interface (500/600/700/800), Bodoni Moda only for
-     the wordmark and large page titles. Self-hosted via Fontsource. */
-  --font-ui: 'Manrope', system-ui, sans-serif;
-  --font-display: 'Bodoni Moda', Georgia, serif;
+  /* Typography mirrors the website: GFS Didot for the wordmark and large page
+     titles, Georgia for reading text, Figtree for interface text and labels.
+     Self-hosted (Fontsource), not loaded from Google at runtime. */
+  --font-display: 'GFS Didot', Georgia, serif;
+  --font-body: Georgia, 'Times New Roman', serif;
+  --font-ui: 'Figtree', system-ui, sans-serif;
   --text-body: 14px;     /* line height 1.45 */
   --text-label: 12px;
   --text-title: 24px;
