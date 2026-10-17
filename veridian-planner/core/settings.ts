@@ -1,4 +1,5 @@
 import type { ISODate } from './dates.js';
+import { DEFAULT_CANCELLATION_TIERS, type CancellationTier } from './bookings.js';
 
 // Per-user rates. Rates are effective-dated in the data model; the core takes
 // the already-resolved values for the period being computed. Contracts keep
@@ -40,7 +41,10 @@ export interface PlannerSettings {
   thresholds: Thresholds;
   noticeDays: number;              // before renewal (default 90)
   termMonths: number;              // contract term (default 12, auto-renews)
-  lateCancellationWorkingDays: number; // default 2
+  // Client cancellation charges by written notice (consultancy agreement
+  // schedule 1 section 8.4): under 14 days 100%, 14-44 75%, 45-89 50%,
+  // 90 or more free.
+  cancellationTiers: readonly CancellationTier[];
   defaultWinProbability: number;   // pencilled with no probability (default 0.5)
   expenseMarkup: number;           // recharge = net * (1 + markup)
   mileageRateHigh: number;         // 45p up to the threshold
@@ -63,7 +67,7 @@ export function defaultSettings(asAt: ISODate): PlannerSettings {
     thresholds: DEFAULT_THRESHOLDS,
     noticeDays: 90,
     termMonths: 12,
-    lateCancellationWorkingDays: 2,
+    cancellationTiers: DEFAULT_CANCELLATION_TIERS,
     defaultWinProbability: 0.5,
     expenseMarkup: 0,
     mileageRateHigh: 0.45,
