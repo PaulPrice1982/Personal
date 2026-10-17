@@ -5,7 +5,7 @@ A new Replit app, separate from the veridian-partners.com website, to run at
 page and a footer "Consultant login" link; nothing else on the site changes.
 
 This brief condenses Veridian_Planner_Build_Spec v2.0 (17/10/2026). The
-numerical rules are already implemented and tested in `core/` (60 vitest tests
+numerical rules are already implemented and tested in `core/` (61 vitest tests
 mirroring the spreadsheet's 27 scenarios and the spec's additional tests, all
 passing). **Copy `core/` in unchanged and build the app around it.** Where the
 app and the old spreadsheet differ, the spec wins; where this brief and `core/`
@@ -52,8 +52,16 @@ tests differ, the tests win.
 - `terms.ts` 12-month auto-renewing terms, notice deadline = renewal − 90 days,
   late-notice handling. Unused days expire at term end.
 - `bookings.ts` delivery states (Planned / Unconfirmed / Delivered / Cancelled
-  in time / Cancelled late / Cancelled by consultant / Moved) and the three
-  counting bases (allowance, billable, capacity).
+  in time / Cancelled late / Cancelled by consultant / Moved), the three
+  counting bases (allowance, billable, capacity), and the cancellation charge
+  tiers from the consultancy agreement: by written notice before the booked
+  date, under 14 days charges 100% of the day, 14 to 44 days 75%, 45 to 89
+  days 50%, 90 days or more free. A chargeable cancellation counts its
+  fraction on the allowance and billable bases; every cancellation frees the
+  calendar day itself. Moving a date is a cancellation unless a replacement
+  date is agreed (the app's Move action records the replacement, so only the
+  new date counts). Days the consultant cannot deliver are rescheduled or
+  not charged.
 - `overage.ts` overage walked in date order; whole days at the additional day
   rate, a trailing half at the additional half-day rate; monthly overage =
   delta of cumulative charges.
@@ -66,7 +74,7 @@ tests differ, the tests win.
 - `expenses.ts` mileage 45p/25p with the 10,000-mile tax-year threshold,
   recharge = net × (1 + markup), receipts required over £25.
 
-Run `npm test` in the pack to see all 60 checks pass before building; keep the
+Run `npm test` in the pack to see all 61 checks pass before building; keep the
 suite green in CI for every change.
 
 ## Pages (left sidebar, top to bottom)
@@ -121,7 +129,7 @@ delivered days, capture an expense, check capacity.
 10. **Settings**: rates (effective-dated; contracts keep signed rates), weekly
     split (effective-dated; earlier weeks keep the old split), leave and leave
     year, bank holiday country (gov.uk JSON for GB, Nager.Date for AU),
-    late-cancellation window, statement day, reminders, ICS links (two per
+    cancellation charge tiers, statement day, reminders, ICS links (two per
     user, encrypted), app→Outlook private ICS feed URL, monday connection
     (token, board, stage→probability mapping), email alert preferences (the
     new-device alert cannot be switched off).
@@ -161,9 +169,11 @@ login" link. Nothing else changes on the site.
 ## Decisions (confirmed by Paul, 17/10/2026)
 
 1. Over-allowance half day **£1,050**.
-2. Late cancellation window **2 working days**. Paul's current SOW template
-   carries no cancellation clause, so the app's setting is the source of
-   truth; contract templates should gain a matching clause when uploaded.
+2. Cancellation charges follow the consultancy agreement's tiers (see the
+   engine notes above): under 14 days 100%, 14 to 44 days 75%, 45 to 89 days
+   50%, 90 days or more free; moving a date is a cancellation unless a
+   replacement date is agreed. The tiers are a per-user setting with this
+   schedule as the default.
 3. Partner free/busy visibility **on** by default.
 4. Shared clients are **always billed by Veridian Revenue Partners Limited**;
    partner settlement stays Phase 2.
@@ -178,7 +188,7 @@ login" link. Nothing else changes on the site.
 Xero API connection, e-signature, Microsoft Graph/Azure write access,
 partner settlement, passkeys, client portal.
 
-## Acceptance (beyond the 60 core tests)
+## Acceptance (beyond the 61 core tests)
 
 A13 delivered-day edit after statement → allowed, flagged, logged, version 2
 offered. A14–A17 ICS: clash markers, busy counted once; 2h busy → half day,
