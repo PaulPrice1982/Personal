@@ -37,11 +37,17 @@ model User {
   shareFreeBusy   Boolean  @default(true)
   createdAt       DateTime @default(now())
 
+  // Authenticator-app MFA (TOTP, RFC 6238): the secret encrypted at rest with
+  // SESSION_SECRET-derived keys, set when enrolment is verified; the last
+  // accepted 30-second step stops replay of a used code.
+  totpSecretEnc    String?
+  totpEnabledAt    DateTime?
+  totpLastUsedStep BigInt?
+
   sessions        Session[]
   trustedDevices  TrustedDevice[]
   loginEvents     LoginEvent[]
-  oneTimeCodes    OneTimeCode[]
-  magicLinks      MagicLink[]
+  recoveryCodes   RecoveryCode[]
   settings        SettingsHistory[]
   entityShares    EntityShare[]
   clientShares    ClientShare[]
@@ -89,8 +95,8 @@ model LoginEvent {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  email     String // normalised, for rate limiting
-  kind      String // password_ok, password_fail, code_ok, code_fail, magic_ok, locked, new_device
+  email     String // as entered, for uniform-response rate limiting
+  kind      String // password_ok, password_fail, totp_ok, totp_fail, recovery_ok, recovery_fail, locked, new_device, totp_enrolled, totp_reset
   ip        String?
   userAgent String?
   createdAt DateTime @default(now())
@@ -98,30 +104,21 @@ model LoginEvent {
   @@index([email, createdAt])
 }
 
-model OneTimeCode {
+// Single-use recovery codes for a lost authenticator: ten shown once at TOTP
+// enrolment, stored hashed (SHA-256 of the normalised code), each usable once.
+// Emailed one-time codes and magic links are gone from login (18/10/2026):
+// sign-in is password + authenticator code (or a recovery code), with trusted
+// browsers still skipping the second step for 30 days. Resets and invites
+// keep using AuthToken (F-013).
+model RecoveryCode {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  codeHash  String // 6 digits, hashed
-  purpose   String // login only; resets and invites use AuthToken (F-013)
-  attempts  Int      @default(0) // max 5
+  codeHash  String   @unique
   createdAt DateTime @default(now())
-  expiresAt DateTime // 10 minutes
   usedAt    DateTime?
-  loginAttemptId String
 
-  @@index([userId, purpose, usedAt])
-}
-
-model MagicLink {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash   String   @unique
-  browserNonceHash String // must match the requesting browser; else show a code
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime // 15 minutes, single use
-  usedAt      DateTime?
+  @@index([userId, usedAt])
 }
 
 // ---------- Settings (effective-dated, never overwritten) ----------
@@ -247,7 +244,11 @@ model ContractTerm {
   id            String   @id @default(cuid())
   clientId      String
   client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  frequency     String // '1 day a week' ... 'Half day a month'
+  // 'retainer' (recurring package) or 'one_off' (ad-hoc project work: no
+  // frequency, no allowance, no annual fee; each counted day bills at the
+  // standard day/half-day rate via core/oneoff.ts, cancellations at tier).
+  engagement    String   @default("retainer")
+  frequency     String? // retainer only: '1 day a week' ... 'Half day a month'; null for one_off
   contractStart DateTime @db.Date
   termMonths    Int      @default(12)
   noticeDays    Int      @default(90)
@@ -506,8 +507,8 @@ model BillingSummary {
   entity     Entity   @relation(fields: [entityId], references: [id], onDelete: Restrict)
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  csvFileKey String? // Xero CSV: *ContactName, EmailAddress, *InvoiceNumber, ...
-  exportedAt DateTime? // lines locked once exported
+  csvFileKey String?
+  exportedAt DateTime?
   createdAt  DateTime @default(now())
   lines      BillingLine[]
   @@unique([monthStart, entityId, userId])
@@ -517,8 +518,8 @@ model BillingLine {
   summaryId   String
   summary     BillingSummary @relation(fields: [summaryId], references: [id], onDelete: Restrict)
   clientId    String
-  kind        String // retainer, overage, expense
-  bookingId   String? // overage lines: the booking priced (F-003)
+  kind        String
+  bookingId   String?
   expenseId   String?
   description String
   quantity    Decimal  @db.Decimal(8, 3)
@@ -529,14 +530,14 @@ model BillingLine {
   createdAt   DateTime @default(now())
   @@index([clientId])
 }
-model AuthToken {
+model AuthToken { 
   id String @id @default(cuid())
   userId String
   user User @relation(fields:[userId], references:[id], onDelete: Cascade)
-  purpose String // invite, reset
-  tokenHash String @unique // 32 random bytes, SHA-256 stored only
+  purpose String
+  tokenHash String @unique
   createdAt DateTime @default(now())
-  expiresAt DateTime // invite 7 days, reset 1 hour
+  expiresAt DateTime
   usedAt DateTime?
 }
 
@@ -565,7 +566,7 @@ model AuditLog {
   entityId  String?
   detailJson String?
   ip        String?
-  outcome   String   @default("ok") // ok, denied
+  outcome   String   @default("ok")
   createdAt DateTime @default(now())
 
   @@index([entityType, entityId])

@@ -80,23 +80,37 @@ tests differ, the tests win.
 - `whatif.ts` scenarios (never touch real data; "Make pencilled" copies in).
 - `expenses.ts` mileage 45p/25p with the 10,000-mile tax-year threshold,
   recharge = net × (1 + markup), receipts required over £25.
+- `oneoff.ts` one-off (ad-hoc project) engagements, added 18/10/2026: a
+  client engagement with no retainer package, no allowance and no annual or
+  monthly fee. Every counted day bills on its own at the STANDARD day
+  (£1,500) and half-day (£900) rates, and a chargeable cancellation bills its
+  tier fraction of that day's standard price; same 'allowance'/'billable'
+  bases as overage. Use `oneOffWalk` for the statement/Billing lines and
+  `monthlyOneOffCharges` for month grouping; never price one-off days at the
+  additional rates.
+- `totp.ts` authenticator-app MFA (RFC 6238, for Microsoft Authenticator),
+  added 18/10/2026: base32, HOTP/TOTP with the RFC test vectors, a verifier
+  with ±1 step of clock skew and last-used-step replay protection, otpauth://
+  URI for the enrolment QR code, recovery-code formatting. The HMAC-SHA1
+  primitive is injected: pass `(key, msg) => createHmac('sha1', key).update(msg).digest()`
+  from node:crypto.
 
 Run `npm test` in the pack to see all 112 checks pass before building (the
 original 61 plus the review-driven edge suites: terms.edge, overage.walk,
 review.edge and the A35 contrast test); keep the suite green in CI for every
-change. The security, correctness and UX review of 17/10/2026 has been
-applied to this pack: F-001 (term anniversaries), F-002 (fees by term-month
-anniversary, which Billing and Statements must also use), F-003/F-005
-(overage above), F-006 (charge fractions never default; build CountedBooking
-with toCountedBooking from the stored state and fraction), F-004/F-008
-helpers (todayIn, ukTaxYearStart), F-009 (reserved names incl. Bank
-holiday), F-010 (penny rounding, monthlyFeeSchedule, validateSettings, date
-and tier validation), F-015 (vitest 4, lockfile), F-016 (AA-safe
-warning/border tokens) and the schema items F-007/F-011/F-012/F-013/F-014
-(patched schema plus the three SQL migrations in prisma/migrations/). The
-app-layer obligations from those findings are in `APP-REVIEW-OBLIGATIONS.md`
-beside this file and bind this build; the full review is `REVIEW_SPEC.md` in
-the source repository.
+change. The security, correctness and UX review of 17/10/2026
+(`REVIEW_SPEC.md` beside this file) has been applied to this pack: F-001
+(term anniversaries), F-002 (fees by term-month anniversary, which Billing
+and Statements must also use), F-003/F-005 (overage above), F-006 (charge
+fractions never default; build CountedBooking with toCountedBooking from the
+stored state and fraction), F-004/F-008 helpers (todayIn, ukTaxYearStart),
+F-009 (reserved names incl. Bank holiday), F-010 (penny rounding,
+monthlyFeeSchedule, validateSettings, date and tier validation), F-015
+(vitest 4, lockfile), F-016 (AA-safe warning/border tokens) and the schema
+items F-007/F-011/F-012/F-013/F-014 (patched schema plus the three SQL
+migrations in prisma/migrations/). The app-layer obligations from those
+findings are in `APP-REVIEW-OBLIGATIONS.md` beside this file and bind this
+build; the full review is `REVIEW_SPEC.md` in the source repository.
 
 ## Pages (left sidebar, top to bottom)
 
@@ -124,12 +138,19 @@ delivered days, capture an expense, check capacity.
    read-only (meetings ≥3h block a full day, <3h a half day, within
    09:00–17:30; tentative blocks nothing; overlapping Veridian and Detent
    meetings get clash markers and count busy once). WCAG 2.2 AA.
-3. **Clients**: list + detail. Package, term dates, notice status, allowance
-   usage bar, bookings, expenses, statements, contracts. Client create
-   rejects reserved names (Leave, Detent, Admin / BD, Other, Bank holiday).
-   A client belongs to one entity; shared clients are always billed by
-   Veridian Revenue Partners Limited (confirmed decision), whoever delivers
-   the days.
+3. **Clients**: list + detail. Engagement type (added 18/10/2026): client
+   create offers **Retainer** (the six frequencies, allowance, annual fee as
+   today) or **One-off project** (no frequency, no allowance, no retainer
+   fee; optional start and end dates; days billed individually at the
+   standard day/half-day rates via `core/oneoff.ts`). A one-off client's
+   detail page shows days booked/delivered and charges to date instead of an
+   allowance bar; statements and Billing list its per-day lines; forecast
+   counts its planned days at the standard rates (weighted by probability
+   when pencilled). Retainer clients keep package, term dates, notice status,
+   allowance usage bar. Both show bookings, expenses, statements, contracts.
+   Client create rejects reserved names (Leave, Detent, Admin / BD, Other). A client
+   belongs to one entity; shared clients are always billed by Veridian
+   Revenue Partners Limited (confirmed decision), whoever delivers the days.
 4. **Forecast**: the 12-month table plus a stacked bar chart (signed,
    pencilled weighted, overage, expenses) with the utilisation line (amber
    80%, red 95%). Team view (admin only) converts to GBP.
@@ -166,13 +187,21 @@ explain the next step. Skeletons over 300ms, 150–200ms ease-out motion,
 respect reduced motion. UK formats (DD/MM/YYYY, £1,500), tabular figures,
 negatives in parentheses.
 
-## Login security (spec section 4)
+## Login security (spec section 4; second factor replaced 18/10/2026)
 
-- Password (Argon2id, min 12 chars, HIBP range-API check) + emailed 6-digit
-  code (10 min, 5 attempts, then invalidated; 5 wrong codes with a correct
-  password locks the account 15 minutes and emails an alert, A24).
-- Magic link alternative: 15 minutes, single use, same-browser nonce; opened
-  elsewhere it shows a code to enter in the original browser (A25, A26).
+- Password (Argon2id, min 12 chars, HIBP range-API check) + a 6-digit code
+  from an authenticator app (TOTP via `core/totp.ts`; Microsoft Authenticator
+  is the one Paul uses, any RFC 6238 app works). 5 wrong codes with a correct
+  password locks the account 15 minutes and emails an alert (A24).
+- Enrolment: on first sign-in after activation (and after an admin TOTP
+  reset) show a QR code of the `otpauthUri` plus the base32 secret for manual
+  entry, and require one valid code before enabling. Store the secret
+  encrypted at rest and the last accepted step (replay guard). On enabling,
+  show ten single-use recovery codes exactly once (stored SHA-256 hashed);
+  a recovery code signs in when the phone is lost and prompts re-enrolment.
+  Admin can reset a partner's TOTP, which forces re-enrolment at next login.
+- Emailed one-time codes and magic links are REMOVED from login. Email is
+  still used for invites, password resets (AuthToken) and alerts only.
 - Trusted browser 30 days (code required again after, A30). Uniform responses
   for unknown emails (A27). Rate limits + 15-minute lockouts. Turnstile on
   the login form. Sessions 12h idle / 30 days max; password change ends all
@@ -208,6 +237,14 @@ login" link. Nothing else changes on the site.
    each over-allowance half day bills at **£1,050**, and a chargeable
    cancellation over allowance bills at its tier percentage of that day's
    over-allowance price.
+10. (18/10/2026) Client creation offers a **One-off project** engagement
+    alongside the retainer frequencies: no allowance, no retainer fee, each
+    day billed at the standard day/half-day rate (`core/oneoff.ts`).
+11. (18/10/2026) The emailed 6-digit login code and magic links are replaced
+    by an **authenticator app** second factor (TOTP via `core/totp.ts`;
+    Microsoft Authenticator), with QR enrolment, ten single-use recovery
+    codes and an admin reset. Trusted browsers stay at 30 days; email keeps
+    serving invites, password resets and alerts only.
 10. Review Q2 (confirmed 17/10/2026): **bank holidays are unavailable
     days**. Nothing can be booked on a bank holiday for the user's country
     (no client days, leave or other allocations); the calendar shows them

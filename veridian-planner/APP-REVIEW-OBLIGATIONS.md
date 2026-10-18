@@ -144,3 +144,26 @@ attribution, AU mileage defaults, shared-client field list, post-billing
 adjustments policy wording, reserved-name list confirmation, fractional
 allowance rounding) are for Paul to decide. Do not build them; the defaults
 already in the pack stand until he says otherwise.
+
+## Amendments (Paul, 18/10/2026)
+
+25. The emailed 6-digit login code and magic links are REMOVED. Items 13 and
+    14 above are superseded (S1 falls away with them); items 12, 15, 16 and
+    17 stand, with OneTimeCode and MagicLink dropped from item 17's
+    transaction (mark unused AuthToken rows used; delete the OneTimeCode and
+    MagicLink tables). The second factor is an authenticator app (TOTP, RFC
+    6238, via `core/totp.ts`; Microsoft Authenticator): QR enrolment with one
+    valid code required before enabling, secret encrypted at rest,
+    last-accepted-step replay guard, ±1 step skew, ten single-use hashed
+    recovery codes shown once, admin TOTP reset forcing re-enrolment, trusted
+    browsers unchanged at 30 days. Lockout, uniform responses and rate
+    limits (item 12) now key on TOTP attempts. Email remains for invites,
+    resets and alerts only.
+26. Client engagements gain a type: 'retainer' (unchanged) or 'one_off'
+    (ad-hoc project work). A one-off engagement has no frequency, allowance
+    or retainer fee; `ContractTerm.frequency` is now nullable and only null
+    for one_off rows. Statements and Billing price one-off days with
+    `oneOffWalk`/`monthlyOneOffCharges` (standard rates, same tiers and
+    bases); the export-blocking rule for unconfirmed days (item 6) applies
+    to one-off clients too. Renewal/notice alerts do not apply to one_off
+    terms.
